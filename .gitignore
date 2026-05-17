@@ -1,0 +1,24 @@
+# Build artifacts
+*.o
+*.obj
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+*.out
+
+# Compiled binaries in repo root
+/bench_inprocess
+/tsc_calibrate
+/test_compile
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Rust (when added)
+target/
+Cargo.lock
