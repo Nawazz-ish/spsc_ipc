@@ -1,0 +1,12 @@
+[package]
+name = "producer"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "producer"
+path = "src/main.rs"
+
+[dependencies]
+shared-rs = { path = "../shared-rs" }
+libc = "0.2"
