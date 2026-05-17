@@ -49,12 +49,12 @@ int main() {
             while (!queue->try_pop(m)) _mm_pause();
         }
 
-        // Measure: record cycle-delta from producer's timestamp to now.
+        // Measure: record raw tick-delta from producer's timestamp to now.
+        // Conversion to ns happens at report time, off the hot path.
         for (size_t i = 0; i < MEASURE_SAMPLES; ++i) {
             while (!queue->try_pop(m)) _mm_pause();
             uint64_t now = rdtscp_now();
-            int64_t latency_ns = ticks_to_ns(now - m.tsc, cal.ticks_per_ns);
-            hist.record(latency_ns);
+            hist.record(int64_t(now - m.tsc));
         }
 
         // Wait for the stop sentinel and exit.
@@ -80,6 +80,8 @@ int main() {
         m.tsc = rdtscp_now();
         m.seq = i;
         while (!queue->try_push(m)) _mm_pause();
+        uint64_t end = rdtscp_now() + uint64_t(1000 * cal.ticks_per_ns);
+        while (rdtscp_now() < end) { /* spin */ }
     }
 
     // Send the stop sentinel.
@@ -90,6 +92,6 @@ int main() {
     consumer.join();
 
     // ── 5. Report ──
-    hist.report("in-process latency");
+    hist.report("in-process latency", cal.ticks_per_ns);
     return 0;
 }
