@@ -1,6 +1,5 @@
 #pragma once
 
-
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
@@ -9,21 +8,24 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-//attach a posix shared memory segment of the given name and size, returning a pointer to it
-
-static inline void* shm_attach(const char* name, size_t size, bool create){
-    int flags = 0_RDWR | (create ? 0_CREAT : 0);
+// Attach to (or create) a POSIX shared-memory region.
+// Returns a pointer to a mapped region of `size` bytes.
+static inline void* shm_attach(const char* name, size_t size, bool create) {
+    int flags = O_RDWR | (create ? O_CREAT : 0);
     int fd = shm_open(name, flags, 0600);
-    if(fd<0){perrpr("shm_open");std::exist(1);}
-    if(create){
-        if(ftruncate(fd,size)<0){perror("ftruncate"); std::exist(1);}
-    }
-    void* p = mmap(nullptr, size, PROT_READ | PROT_WRITE,MAP_SHARED, fd,0);
-    if(p==MAP_FAILED){perror("mmap"); std::exist(1);}
+    if (fd < 0) { perror("shm_open"); std::exit(1); }
 
-    close(fd);
+    if (create) {
+        if (ftruncate(fd, size) < 0) { perror("ftruncate"); std::exit(1); }
+    }
+
+    void* p = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    if (p == MAP_FAILED) { perror("mmap"); std::exit(1); }
+
+    close(fd);  // safe — mmap holds its own reference to the file
     return p;
 }
+
 
 
 

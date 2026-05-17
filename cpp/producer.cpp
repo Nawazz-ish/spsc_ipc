@@ -1,7 +1,6 @@
 #include "../shared/include/shm.hpp"
 #include "../shared/include/shm_layout.hpp"
 #include "../shared/include/tsc.hpp"
-#include "../shared/include/histogram.hpp"
 
 #include <pthread.h>
 #include <sched.h>
@@ -12,7 +11,7 @@
 static constexpr size_t   WARMUP_SAMPLES  = 10'000;
 static constexpr size_t   MEASURE_SAMPLES = 1'000'000;
 static constexpr uint64_t STOP_SENTINEL   = UINT64_MAX;
-static constexpr int      CONSUMER_CORE   = 1;
+static constexpr int      PRODUCER_CORE   = 0;
 
 static void pin_to_core(int core) {
     cpu_set_t set;
@@ -22,36 +21,35 @@ static void pin_to_core(int core) {
 }
 
 int main() {
-    printf("[consumer] attaching to %s...\n", SHM_NAME);
+    printf("[producer] attaching to %s...\n", SHM_NAME);
     void* mem = shm_attach(SHM_NAME, sizeof(SHMLayout), true);
     auto* layout = static_cast<SHMLayout*>(mem);
 
-    printf("[consumer] init_or_wait...\n");
+    printf("[producer] init_or_wait...\n");
     double ticks_per_ns = init_or_wait(layout);
-    printf("[consumer] ticks_per_ns = %.6f\n", ticks_per_ns);
+    printf("[producer] ticks_per_ns = %.6f\n", ticks_per_ns);
 
-    pin_to_core(CONSUMER_CORE);
+    pin_to_core(PRODUCER_CORE);
 
-    Histogram hist;
-    hist.reserve(MEASURE_SAMPLES);
-    Message m;
+    Message m{};
 
     for (size_t i = 0; i < WARMUP_SAMPLES; ++i) {
-        while (!layout->cpp_to_rust.try_pop(m)) _mm_pause();
+        m.tsc = rdtscp_now();
+        m.seq = i;
+        while (!layout->cpp_to_rust.try_push(m)) _mm_pause();
     }
 
     for (size_t i = 0; i < MEASURE_SAMPLES; ++i) {
-        while (!layout->cpp_to_rust.try_pop(m)) _mm_pause();
-        uint64_t now = rdtscp_now();
-        int64_t latency_ns = ticks_to_ns(now - m.tsc, ticks_per_ns);
-        hist.record(latency_ns);
+        m.tsc = rdtscp_now();
+        m.seq = i;
+        while (!layout->cpp_to_rust.try_push(m)) _mm_pause();
     }
 
-    while (true) {
-        if (layout->cpp_to_rust.try_pop(m) && m.seq == STOP_SENTINEL) break;
-        _mm_pause();
-    }
+    m.seq = STOP_SENTINEL;
+    m.tsc = 0;
+    while (!layout->cpp_to_rust.try_push(m)) _mm_pause();
 
-    hist.report("shm one-way latency");
+    printf("[producer] done. sent %zu messages.\n",
+           WARMUP_SAMPLES + MEASURE_SAMPLES + 1);
     return 0;
 }

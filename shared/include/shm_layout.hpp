@@ -36,7 +36,7 @@ inline double init_or_wait(SHMLayout* layout){
         //i win, do the calibration
         auto cal = calibrate_tsc();
         uint64_t ticks_per_ns = uint64_t(cal.ticks_per_ns * TICKS_PER_NS_SCALE);
-        layout->ticks_per_ns_fixed.store(ticks_per_ns * TICKS_PER_NS_SCALE), std::memory_order_release);
+        layout->ticks_per_ns_fixed.store(ticks_per_ns * TICKS_PER_NS_SCALE), std::memory_order_release;
         layout->init_state.store(INIT_READY, std::memory_order_release);
         return ticks_per_ns;
     }else{
