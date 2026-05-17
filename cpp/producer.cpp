@@ -39,10 +39,15 @@ int main() {
         while (!layout->cpp_to_rust.try_push(m)) _mm_pause();
     }
 
+    // Pace the producer so each message arrives at a near-empty queue.
+    // Without this we'd be measuring queue dwell time, not transit latency.
+    const uint64_t pace_ticks = uint64_t(1000.0 * ticks_per_ns); // ~1 µs
     for (size_t i = 0; i < MEASURE_SAMPLES; ++i) {
         m.tsc = rdtscp_now();
         m.seq = i;
         while (!layout->cpp_to_rust.try_push(m)) _mm_pause();
+        uint64_t end = rdtscp_now() + pace_ticks;
+        while (rdtscp_now() < end) { /* spin */ }
     }
 
     m.seq = STOP_SENTINEL;

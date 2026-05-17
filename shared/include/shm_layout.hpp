@@ -9,9 +9,9 @@
 
 
 constexpr size_t SHM_QUEUE_CAPACITY = 4096;
-constexpr size_t INIT_UNINIT = 0;
-constexpr size_t INIT_INPROGRESS = 1;
-constexpr size_t INIT_READY = 2;
+constexpr uint32_t INIT_UNINIT     = 0;
+constexpr uint32_t INIT_INPROGRESS = 1;
+constexpr uint32_t INIT_READY      = 2;
 constexpr uint64_t TICKS_PER_NS_SCALE = 1'000'000'000; // to be calibrated at runtime
 
 constexpr const char* SHM_NAME = "/shm_ipc";
@@ -35,10 +35,11 @@ inline double init_or_wait(SHMLayout* layout){
     if(layout->init_state.compare_exchange_strong(expected, INIT_INPROGRESS)){
         //i win, do the calibration
         auto cal = calibrate_tsc();
-        uint64_t ticks_per_ns = uint64_t(cal.ticks_per_ns * TICKS_PER_NS_SCALE);
-        layout->ticks_per_ns_fixed.store(ticks_per_ns * TICKS_PER_NS_SCALE), std::memory_order_release;
+        uint64_t fixed = uint64_t(cal.ticks_per_ns * TICKS_PER_NS_SCALE);
+        layout->ticks_per_ns_fixed.store(fixed, std::memory_order_relaxed);
         layout->init_state.store(INIT_READY, std::memory_order_release);
-        return ticks_per_ns;
+        return cal.ticks_per_ns;
+
     }else{
         while(layout->init_state.load(std::memory_order_acquire) != INIT_READY){
             //spin until ready

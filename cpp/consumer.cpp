@@ -40,11 +40,11 @@ int main() {
         while (!layout->cpp_to_rust.try_pop(m)) _mm_pause();
     }
 
+    // Record raw tick-deltas; convert to ns at report time, off the hot path.
     for (size_t i = 0; i < MEASURE_SAMPLES; ++i) {
         while (!layout->cpp_to_rust.try_pop(m)) _mm_pause();
         uint64_t now = rdtscp_now();
-        int64_t latency_ns = ticks_to_ns(now - m.tsc, ticks_per_ns);
-        hist.record(latency_ns);
+        hist.record(int64_t(now - m.tsc));
     }
 
     while (true) {
@@ -52,6 +52,6 @@ int main() {
         _mm_pause();
     }
 
-    hist.report("shm one-way latency");
+    hist.report("shm one-way latency", ticks_per_ns);
     return 0;
 }
