@@ -17,7 +17,9 @@ class Histogram{
 
     size_t size() const {return samples_.size();}
 
-    void report(const char* label){
+    // If samples are stored in raw TSC ticks, pass ticks_per_ns to convert at
+    // report time. Leave it at 1.0 if samples are already in nanoseconds.
+    void report(const char* label, double ticks_per_ns = 1.0){
         if(samples_.empty()){
             printf("%-20s: (empty)\n", label);
             return;
@@ -28,9 +30,9 @@ class Histogram{
         };// Lambda to get the p-th percentile value. size_t index = floor(p * N), where N is the number of samples. For p=0.5 and N=100, this gives index 50 (the 51st sample in 0-based indexing). This is a common way to compute percentiles from a sorted list.
         printf("%-20s: p50=%6.2f ns, p90=%6.2f ns, p99=%6.2f ns, max=%6.2f ns\n",
             label,
-            double(pct(0.5)),
-            double(pct(0.9)),
-            double(pct(0.99)),
-            double(samples_.back()));
+            double(pct(0.5))  / ticks_per_ns,
+            double(pct(0.9))  / ticks_per_ns,
+            double(pct(0.99)) / ticks_per_ns,
+            double(samples_.back()) / ticks_per_ns);
     }
 };
