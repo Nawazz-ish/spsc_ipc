@@ -10,8 +10,8 @@ use shared_rs::tsc::rdtscp_now;
 const WARMUP_SAMPLES: usize = 10_000;
 const MEASURE_SAMPLES: usize = 1_000_000;
 const STOP_SENTINEL: u64 = u64::MAX;
-const INITIATOR_CORE: usize = 0;
-const RESPONDER_CORE: usize = 1;
+const INITIATOR_CORE: usize = 2;
+const RESPONDER_CORE: usize = 3;
 
 fn pin_to_core(core: usize) {
     unsafe {
